@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI Voice Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: white;
+            padding: 15px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+            padding: 25px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 18px;
+            font-size: 26px;
+            background: linear-gradient(to right, #a78bfa, #7c3aed);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        textarea {
+            width: 100%;
+            height: 110px;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            outline: none;
+            resize: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+        }
+
+        textarea:focus {
+            outline: 2px solid #7c3aed;
+        }
+
+        textarea::placeholder {
+            color: #cbd5e1;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            margin-top: 4px;
+            color: #cbd5e1;
+        }
+
+        /* Dropdown styling */
+        .select-wrapper {
+            position: relative;
+            margin-top: 12px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 40px 10px 12px;
+            border-radius: 10px;
+            border: none;
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .select-wrapper::after {
+            content: "▼";
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a78bfa;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        select:focus {
+            outline: 2px solid #7c3aed;
+        }
+
+        option {
+            background: #1e293b;
+            color: white;
+        }
+
+        button {
+            margin-top: 18px;
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: #7c3aed;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            background: #6d28d9;
+            transform: scale(1.02);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .output {
+            margin-top: 20px;
+            display: none;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .download-btn {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #1e293b;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .download-btn:hover {
+            background: #334155;
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            .container {
+                padding: 18px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            textarea {
+                height: 90px;
+                font-size: 13px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>🎙 AI Voice Generator</h1>
+
+    <form id="voiceForm">
+        <textarea id="textInput" placeholder="Type something..." required></textarea>
+        <div class="char-count" id="charCount">0 characters</div>
+
+        <div class="select-wrapper">
+            <select id="langSelect">
+                <option value="en">English</option>
+                <option value="ta">Tamil</option>
+            </select>
+        </div>
+
+        <button id="submitBtn" type="submit">Generate Voice</button>
+    </form>
+
+    <div class="output" id="outputBox">
+        <h3>🔊 Your Audio</h3>
+        <audio id="audioPlayer" controls></audio>
+        <button class="download-btn" id="downloadBtn">⬇ Download</button>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById("voiceForm");
+    const input = document.getElementById("textInput");
+    const lang = document.getElementById("langSelect");
+    const count = document.getElementById("charCount");
+    const btn = document.getElementById("submitBtn");
+
+    const audioPlayer = document.getElementById("audioPlayer");
+    const outputBox = document.getElementById("outputBox");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    let audioBlob = null;
+
+    // Character counter
+    input.addEventListener("input", () => {
+        count.textContent = input.value.length + " characters";
+    });
+
+    // Generate audio
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        btn.textContent = "Generating...";
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append("text", input.value);
+        formData.append("lang", lang.value);
+
+        const response = await fetch("/generate", {
+            method: "POST",
+            body: formData
+        });
+
+        audioBlob = await response.blob();
+        const audioURL = URL.createObjectURL(audioBlob);
+
+        audioPlayer.src = audioURL;
+        outputBox.style.display = "block";
+
+        btn.textContent = "Generate Voice";
+        btn.disabled = false;
+    });
+
+    // Download
+    downloadBtn.addEventListener("click", () => {
+        if (!audioBlob) return;
+
+        const url = URL.createObjectURL(audioBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "voice.mp3";
+        a.click();
+    });
+</script>
+
+</body>
+</html>
